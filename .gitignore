@@ -107,8 +107,11 @@ saved/
 wandb/
 .cometml-runs/
 outputs/
+saved_fix1/
+saved_fix2/
 
 # editor, os cache directory
 .vscode/
 .idea/
 __MACOSX/
+

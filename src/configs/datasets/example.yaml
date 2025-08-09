@@ -1,29 +1,36 @@
 train:
-  _target_: torch.utils.data.ConcatDataset # we can concat datasets if we want to
-  datasets:
-    - _target_: src.datasets.ExampleDataset
-      input_length: 1024
-      dataset_length: 15
-      n_classes: 10
-      name: "train15"
-      instance_transforms: ${transforms.instance_transforms.train}
-    - _target_: src.datasets.ExampleDataset
-      input_length: 1024
-      dataset_length: 20
-      n_classes: 10
-      name: "train20"
-      instance_transforms: ${transforms.instance_transforms.train}
+  _target_: src.datasets.example.ExampleDataset
+  root: "data/ASVspoof2019/LA"
+  split: "train"
+  sample_rate: 16000
+  n_fft: 512
+  win_length: 400
+  hop_length: 160
+  limit: null
+  shuffle_index: true
+  instance_transforms: ${transforms.instance_transforms.train}
+  max_frames: 600
 val:
-  _target_: src.datasets.ExampleDataset
-  input_length: 1024
-  dataset_length: 15
-  n_classes: 10
-  name: "val"
+  _target_: src.datasets.example.ExampleDataset
+  root: "data/ASVspoof2019/LA"
+  split: "dev"
+  sample_rate: 16000
+  n_fft: 512
+  win_length: 400
+  hop_length: 160
+  limit: null
+  shuffle_index: false
   instance_transforms: ${transforms.instance_transforms.inference}
+  max_frames: 600
 test:
-  _target_: src.datasets.ExampleDataset
-  input_length: 1024
-  dataset_length: 15
-  n_classes: 10
-  name: "test"
+  _target_: src.datasets.example.ExampleDataset
+  root: "data/ASVspoof2019/LA"
+  split: "eval"
+  sample_rate: 16000
+  n_fft: 512
+  win_length: 400
+  hop_length: 160
+  limit: null
+  shuffle_index: false
   instance_transforms: ${transforms.instance_transforms.inference}
+  max_frames: 600

@@ -1,0 +1,153 @@
+model:
+  _target_: src.model.LCNN
+  in_channels: 1
+  dropout: 0.75
+writer:
+  _target_: src.logger.WandBWriter
+  project_name: pytorch_template
+  entity: null
+  run_name: Final_Attempt
+  mode: online
+  loss_names:
+  - loss
+  log_checkpoints: false
+  id_length: 8
+metrics:
+  device: auto
+  train:
+  - _target_: src.metrics.example.ExampleMetric
+    name: TRAIN_Accuracy
+    device: ${metrics.device}
+    metric: null
+    pos_index: 1
+  inference:
+  - _target_: src.metrics.example.ExampleMetric
+    name: Accuracy
+    device: ${metrics.device}
+    metric: null
+    pos_index: 1
+  - _target_: src.metrics.example.ExampleMetric
+    name: F1
+    device: ${metrics.device}
+    metric: null
+    pos_index: 1
+  - _target_: src.metrics.example.ExampleMetric
+    name: AUROC
+    device: ${metrics.device}
+    metric: null
+    pos_index: 1
+  - _target_: src.metrics.example.ExampleMetric
+    name: EER
+    device: ${metrics.device}
+    metric: null
+    pos_index: 1
+datasets:
+  train:
+    _target_: src.datasets.example.ExampleDataset
+    root: data/ASVspoof2019/LA
+    split: train
+    sample_rate: 16000
+    n_fft: 512
+    win_length: 400
+    hop_length: 160
+    limit: null
+    shuffle_index: true
+    instance_transforms: ${transforms.instance_transforms.train}
+    max_frames: 600
+  val:
+    _target_: src.datasets.example.ExampleDataset
+    root: data/ASVspoof2019/LA
+    split: dev
+    sample_rate: 16000
+    n_fft: 512
+    win_length: 400
+    hop_length: 160
+    limit: null
+    shuffle_index: false
+    instance_transforms: ${transforms.instance_transforms.inference}
+    max_frames: 600
+  test:
+    _target_: src.datasets.example.ExampleDataset
+    root: data/ASVspoof2019/LA
+    split: eval
+    sample_rate: 16000
+    n_fft: 512
+    win_length: 400
+    hop_length: 160
+    limit: null
+    shuffle_index: false
+    instance_transforms: ${transforms.instance_transforms.inference}
+    max_frames: 600
+dataloader:
+  _target_: torch.utils.data.DataLoader
+  batch_size: 64
+  num_workers: 8
+  pin_memory: true
+  collate_fn:
+    _target_: src.datasets.collate.collate_fn
+    _partial_: true
+  persistent_workers: true
+transforms:
+  batch_transforms:
+    train:
+      data_object:
+        _target_: torch.nn.Sequential
+        _args_:
+        - _target_: src.transforms.normalize.Standardize2D
+        - _target_: torchaudio.transforms.FrequencyMasking
+          freq_mask_param: 8
+        - _target_: torchaudio.transforms.TimeMasking
+          time_mask_param: 15
+    inference:
+      data_object:
+        _target_: torch.nn.Sequential
+        _args_:
+        - _target_: src.transforms.normalize.Standardize2D
+        - _target_: src.transforms.normalize.CenterCropPadTime
+          max_frames: ${datasets.test.max_frames}
+  instance_transforms:
+    train:
+      data_object:
+        _target_: torchvision.transforms.v2.Compose
+        transforms:
+        - _target_: src.transforms.RandomScale1D
+    inference: null
+    fft:
+      window_length: 1724
+      hop_length: 0.0081
+      window_type: blackman
+      n_fft: 512
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 0.0001
+  weight_decay: 0.0001
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.StepLR
+  gamma: 0.98
+  step_size: ${trainer.epoch_len}
+loss_function:
+  _target_: src.loss.example.ExampleLoss
+  in_features: 128
+  num_classes: 2
+  m: 4
+  s: 30.0
+trainer:
+  monitor: min val_EER
+  log_step: 50
+  n_epochs: 15
+  epoch_len: 600
+  device_tensors:
+  - data_object
+  - labels
+  resume_from: model_best.pth
+  device: cuda
+  override: false
+  save_period: 3
+  early_stop: 10
+  save_dir: IM_BEGGING
+  seed: 1
+apply_tform: true
+seg_frames: 300
+hop_frames: 150
+score_type: p_bona
+out_csv: grading/students_solutions/aak_prob.csv

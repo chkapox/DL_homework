@@ -1,0 +1,14 @@
+- trainer.save_dir=IM_BEGGING
+- writer.run_name=Final_Attempt
+- trainer.resume_from=model_best.pth
+- trainer.device=cuda
+- datasets.test.split=eval
+- +apply_tform=true
+- +seg_frames=300
+- +hop_frames=150
+- +score_type=p_bona
+- +out_csv=grading/students_solutions/aak_prob.csv
+- dataloader.batch_size=64
+- dataloader.num_workers=8
+- dataloader.pin_memory=true
+- +dataloader.persistent_workers=true

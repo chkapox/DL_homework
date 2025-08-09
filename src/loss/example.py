@@ -1,32 +1,38 @@
 import torch
-from torch import nn
-
+import torch.nn as nn
+import torch.nn.functional as F
 
 class ExampleLoss(nn.Module):
-    """
-    Example of a loss function to use.
-    """
-
-    def __init__(self):
+    def __init__(self, class_weights=None, **kwargs):
         super().__init__()
-        self.loss = nn.CrossEntropyLoss()
+        if class_weights is None:
+            class_weights = [3.0, 1.0]
+        w = torch.tensor(class_weights, dtype=torch.float)
+        self.register_buffer("w", w)
+        print(f"[ExampleLoss::__init__] class_weights from cfg = {class_weights}")
 
-    def forward(self, logits: torch.Tensor, labels: torch.Tensor, **batch):
-        """
-        Loss function calculation logic.
+    def forward(self, *, logits=None, labels=None, **kwargs):
+        assert logits is not None and labels is not None, "Pass logits and labels to loss"
 
-        Note that loss function must return dict. It must contain a value for
-        the 'loss' key. If several losses are used, accumulate them into one 'loss'.
-        Intermediate losses can be returned with other loss names.
+        ce = F.cross_entropy(logits, labels.long(), reduction="none")
 
-        For example, if you have loss = a_loss + 2 * b_loss. You can return dict
-        with 3 keys: 'loss', 'a_loss', 'b_loss'. You can log them individually inside
-        the writer. See config.writer.loss_names.
+        if self.w is not None:
+            w0, w1 = self.w[0].to(logits.device), self.w[1].to(logits.device)
+        else:
+            n_pos = (labels == 1).sum().clamp(min=1)
+            n_neg = (labels == 0).sum().clamp(min=1)
+            ratio = (n_neg.float() / n_pos.float()).detach()
+            w0, w1 = 1.0, ratio
 
-        Args:
-            logits (Tensor): model output predictions.
-            labels (Tensor): ground-truth labels.
-        Returns:
-            losses (dict): dict containing calculated loss functions.
-        """
-        return {"loss": self.loss(logits, labels)}
+        sample_w = torch.where(labels.long() == 1, w1, w0).to(logits.device)
+
+        loss = (ce * sample_w).mean()
+
+        if not hasattr(self, "_printed"):
+            try:
+                print(f"[ExampleLoss] w0={float(w0):.3f} w1={float(w1):.3f}")
+            except Exception:
+                pass
+            self._printed = True
+
+        return {"loss": loss}

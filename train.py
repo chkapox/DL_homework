@@ -1,13 +1,16 @@
 import warnings
-
 import hydra
 import torch
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
-
 from src.datasets.data_utils import get_dataloaders
 from src.trainer import Trainer
 from src.utils.init_utils import set_random_seed, setup_saving_and_logging
+import torch, torch.backends.cudnn as cudnn
+
+
+cudnn.benchmark = True
+torch.set_float32_matmul_precision("medium")
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -33,25 +36,19 @@ def main(config):
     else:
         device = config.trainer.device
 
-    # setup data_loader instances
-    # batch_transforms should be put on device
     dataloaders, batch_transforms = get_dataloaders(config, device)
 
-    # build model architecture, then print to console
     model = instantiate(config.model).to(device)
     logger.info(model)
 
-    # get function handles of loss and metrics
     loss_function = instantiate(config.loss_function).to(device)
     metrics = instantiate(config.metrics)
 
-    # build optimizer, learning rate scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = instantiate(config.optimizer, params=trainable_params)
     lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
 
-    # epoch_len = number of iterations for iteration-based training
-    # epoch_len = None or len(dataloader) for epoch-based training
+
     epoch_len = config.trainer.get("epoch_len")
 
     trainer = Trainer(
@@ -74,4 +71,10 @@ def main(config):
 
 
 if __name__ == "__main__":
+    import torch.multiprocessing as mp
+    try:
+        mp.set_start_method("spawn", force=True)
+    except RuntimeError:
+        pass
     main()
+

@@ -1,21 +1,28 @@
-device: "auto"
-train: # metrics that are calculated during training
-  - _target_: src.metrics.ExampleMetric
-    metric:
-      _target_: torchmetrics.classification.MulticlassAccuracy
-      num_classes: 10
+device: auto
+train:
+  - _target_: src.metrics.example.ExampleMetric
+    name: TRAIN_Accuracy
     device: ${metrics.device}
-    name: "TRAIN_MulticlassAccuracy" # just an example to see difference
-inference: # metrics that are calculated during inference (eval)
-  - _target_: src.metrics.ExampleMetric
-    metric:
-      _target_: torchmetrics.classification.MulticlassAccuracy
-      num_classes: 10
+    metric: null
+    pos_index: 1
+inference:
+  - _target_: src.metrics.example.ExampleMetric
+    name: Accuracy
     device: ${metrics.device}
-    name: "MulticlassAccuracy"
-  - _target_: src.metrics.ExampleMetric
-    metric:
-      _target_: torchmetrics.classification.MulticlassAccuracy
-      num_classes: 10
+    metric: null
+    pos_index: 1
+  - _target_: src.metrics.example.ExampleMetric
+    name: F1
     device: ${metrics.device}
-    name: "MulticlassAccuracy2.0"
+    metric: null
+    pos_index: 1
+  - _target_: src.metrics.example.ExampleMetric
+    name: AUROC
+    device: ${metrics.device}
+    metric: null
+    pos_index: 1
+  - _target_: src.metrics.example.ExampleMetric
+    name: EER
+    device: ${metrics.device}
+    metric: null
+    pos_index: 1

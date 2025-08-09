@@ -1,7 +1,8 @@
 import logging
 import random
 from typing import List
-
+from pathlib import Path
+import hashlib
 import torch
 from torch.utils.data import Dataset
 
@@ -18,7 +19,8 @@ class BaseDataset(Dataset):
     """
 
     def __init__(
-        self, index, limit=None, shuffle_index=False, instance_transforms=None
+        self, index, limit=None, shuffle_index=False, instance_transforms=None,
+        cache_dir=None, cache_version="v1", **kwargs
     ):
         """
         Args:
@@ -39,31 +41,38 @@ class BaseDataset(Dataset):
         self._index: List[dict] = index
 
         self.instance_transforms = instance_transforms
+        self.cache_dir = Path(cache_dir) if cache_dir else None
+        self.cache_version = str(cache_version)
+        if self.cache_dir:
+            (self.cache_dir / self.cache_version).mkdir(parents=True, exist_ok=True)
+
+    def _cache_path_for(self, wav_path: str) -> Path:
+        stem = Path(wav_path).stem
+        h = hashlib.md5(str(wav_path).encode("utf-8")).hexdigest()[:8]
+        return (self.cache_dir / self.cache_version / f"{stem}_{h}.pt")
 
     def __getitem__(self, ind):
-        """
-        Get element from the index, preprocess it, and combine it
-        into a dict.
-
-        Notice that the choice of key names is defined by the template user.
-        However, they should be consistent across dataset getitem, collate_fn,
-        loss_function forward method, and model forward method.
-
-        Args:
-            ind (int): index in the self.index list.
-        Returns:
-            instance_data (dict): dict, containing instance
-                (a single dataset element).
-        """
         data_dict = self._index[ind]
         data_path = data_dict["path"]
-        data_object = self.load_object(data_path)
         data_label = data_dict["label"]
+
+        data_object = None
+        if self.cache_dir is not None:
+            cp = self._cache_path_for(data_path)
+            if cp.exists():
+                data_object = torch.load(cp, map_location="cpu")
+
+        if data_object is None:
+            data_object = self.load_object(data_path)
+
+            if self.cache_dir is not None:
+                cp.parent.mkdir(parents=True, exist_ok=True)
+                torch.save(data_object.detach().cpu(), cp)
 
         instance_data = {"data_object": data_object, "labels": data_label}
         instance_data = self.preprocess_data(instance_data)
-
         return instance_data
+
 
     def __len__(self):
         """
@@ -124,7 +133,6 @@ class BaseDataset(Dataset):
                 the dataset that satisfied the condition. The dict has
                 required metadata information, such as label and object path.
         """
-        # Filter logic
         pass
 
     @staticmethod

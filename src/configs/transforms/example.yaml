@@ -1,4 +1,27 @@
-defaults:
-  - batch_transforms: example
-  - instance_transforms: example
-  - _self_
+batch_transforms:
+  train:
+    data_object:
+      _target_: torch.nn.Sequential
+      _args_:
+        - _target_: src.transforms.normalize.Standardize2D
+        - _target_: torchaudio.transforms.FrequencyMasking
+          freq_mask_param: 8
+        - _target_: torchaudio.transforms.TimeMasking
+          time_mask_param: 15
+
+  inference:
+    data_object:
+      _target_: torch.nn.Sequential
+      _args_:
+        - _target_: src.transforms.normalize.Standardize2D
+        - _target_: src.transforms.normalize.CenterCropPadTime
+          max_frames: ${datasets.test.max_frames}
+
+
+instance_transforms:
+  train:
+    data_object:
+      _target_: torchvision.transforms.v2.Compose
+      transforms:
+        - _target_: src.transforms.RandomScale1D
+  inference: null
